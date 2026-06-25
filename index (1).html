@@ -1,0 +1,771 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Missing Data Report — MATHEC Registry</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #f8f7f4;
+    --surface: #ffffff;
+    --surface2: #f1efe9;
+    --border: #e2dfd6;
+    --border2: #ccc9bf;
+    --text: #1a1916;
+    --text2: #6b6860;
+    --text3: #9c9a94;
+    --accent: #185FA5;
+    --accent-light: #e6f1fb;
+    --danger: #A32D2D;
+    --danger-light: #fcebeb;
+    --warning: #854F0B;
+    --warning-light: #faeeda;
+    --success: #3B6D11;
+    --success-light: #eaf3de;
+    --radius: 10px;
+    --radius-sm: 6px;
+    --font: system-ui, -apple-system, 'Segoe UI', Arial, sans-serif;
+    --font-mono: 'Courier New', monospace;
+  }
+
+  body {
+    font-family: var(--font);
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    font-size: 14px;
+    line-height: 1.5;
+  }
+
+  /* ── Header ── */
+  header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 0 2rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 56px;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+  }
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: 600;
+    font-size: 15px;
+    color: var(--text);
+    letter-spacing: -0.01em;
+  }
+  .logo-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--accent);
+  }
+  .logo-sub {
+    font-size: 12px;
+    font-weight: 400;
+    color: var(--text3);
+    margin-left: 2px;
+  }
+  #timestamp {
+    font-size: 12px;
+    color: var(--text3);
+  }
+
+  /* ── Layout ── */
+  main {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 2rem 1.5rem;
+  }
+
+  /* ── Upload zone ── */
+  #upload-section { display: block; }
+  #dashboard { display: none; }
+
+  .upload-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 4rem 2rem;
+    text-align: center;
+    max-width: 540px;
+    margin: 4rem auto;
+  }
+  .upload-icon {
+    width: 56px; height: 56px;
+    border-radius: 14px;
+    background: var(--accent-light);
+    display: flex; align-items: center; justify-content: center;
+    margin: 0 auto 1.25rem;
+  }
+  .upload-icon svg { width: 28px; height: 28px; stroke: var(--accent); fill: none; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+  .upload-title { font-size: 17px; font-weight: 600; margin-bottom: 6px; }
+  .upload-sub { font-size: 13px; color: var(--text2); margin-bottom: 1.5rem; line-height: 1.6; }
+
+  .drop-zone {
+    border: 1.5px dashed var(--border2);
+    border-radius: var(--radius);
+    padding: 2rem 1rem;
+    cursor: pointer;
+    transition: border-color 0.2s, background 0.2s;
+    margin-bottom: 1rem;
+  }
+  .drop-zone:hover, .drop-zone.drag-over {
+    border-color: var(--accent);
+    background: var(--accent-light);
+  }
+  .drop-zone p { font-size: 13px; color: var(--text2); margin-top: 6px; }
+  .drop-zone p span { color: var(--accent); font-weight: 500; }
+
+  .missing-tags {
+    display: flex; flex-wrap: wrap; gap: 5px; justify-content: center;
+    margin-top: 1rem;
+  }
+  .tag {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    padding: 2px 7px;
+    border-radius: 4px;
+    background: var(--surface2);
+    color: var(--text2);
+    border: 1px solid var(--border);
+  }
+
+  /* ── Metrics ── */
+  .metrics-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 12px;
+    margin-bottom: 1.5rem;
+  }
+  .metric-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1rem 1.25rem;
+  }
+  .metric-label {
+    font-size: 11px;
+    color: var(--text3);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 6px;
+    font-weight: 500;
+  }
+  .metric-value {
+    font-size: 26px;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    color: var(--text);
+  }
+  .metric-sub {
+    font-size: 11px;
+    color: var(--text3);
+    margin-top: 2px;
+  }
+
+  /* ── Toolbar ── */
+  .toolbar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-bottom: 1rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 10px 14px;
+  }
+  .tabs {
+    display: flex;
+    gap: 2px;
+    background: var(--surface2);
+    border-radius: var(--radius-sm);
+    padding: 3px;
+  }
+  .tab-btn {
+    padding: 5px 14px;
+    border-radius: 5px;
+    font-size: 13px;
+    font-weight: 500;
+    border: none;
+    background: transparent;
+    color: var(--text2);
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+  }
+  .tab-btn.active {
+    background: var(--surface);
+    color: var(--text);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+  }
+  .toolbar-sep { flex: 1; }
+  select, input[type=text] {
+    font-family: var(--font);
+    font-size: 12px;
+    padding: 5px 10px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: var(--surface);
+    color: var(--text);
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  select:focus, input[type=text]:focus { border-color: var(--accent); }
+  .btn {
+    font-family: var(--font);
+    font-size: 12px;
+    font-weight: 500;
+    padding: 5px 12px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text2);
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s;
+    display: inline-flex; align-items: center; gap: 5px;
+  }
+  .btn:hover { background: var(--surface2); border-color: var(--border2); }
+  .btn-accent {
+    background: var(--accent);
+    color: #fff;
+    border-color: var(--accent);
+  }
+  .btn-accent:hover { opacity: 0.9; background: var(--accent); }
+
+  /* ── Table ── */
+  .table-wrap {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+  }
+  table { width: 100%; border-collapse: collapse; }
+  thead th {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text3);
+    padding: 10px 14px;
+    background: var(--surface2);
+    border-bottom: 1px solid var(--border);
+    text-align: left;
+    white-space: nowrap;
+    cursor: pointer;
+    user-select: none;
+  }
+  thead th:hover { color: var(--text); }
+  thead th .sort-arrow { margin-left: 3px; opacity: 0.4; }
+  thead th.sorted .sort-arrow { opacity: 1; }
+  tbody tr { border-bottom: 1px solid var(--border); transition: background 0.1s; }
+  tbody tr:last-child { border-bottom: none; }
+  tbody tr:hover { background: var(--surface2); }
+  td { padding: 9px 14px; vertical-align: middle; }
+  .patient-id { font-weight: 600; font-size: 13px; }
+
+  /* ── Badges ── */
+  .badge {
+    display: inline-block;
+    font-size: 11px;
+    font-weight: 500;
+    padding: 2px 8px;
+    border-radius: 99px;
+  }
+  .badge-danger { background: var(--danger-light); color: var(--danger); }
+  .badge-warning { background: var(--warning-light); color: var(--warning); }
+  .badge-success { background: var(--success-light); color: var(--success); }
+
+  /* ── Progress bar ── */
+  .bar-bg {
+    background: var(--border);
+    border-radius: 99px;
+    height: 5px;
+    width: 90px;
+    display: inline-block;
+    vertical-align: middle;
+    overflow: hidden;
+  }
+  .bar-fill { height: 5px; border-radius: 99px; }
+
+  /* ── Pills ── */
+  .pill {
+    display: inline-block;
+    font-size: 11px;
+    padding: 1px 7px;
+    border-radius: 4px;
+    margin: 1px;
+    max-width: 120px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    vertical-align: middle;
+  }
+  .pill-danger { background: var(--danger-light); color: var(--danger); }
+  .pill-warning { background: var(--warning-light); color: var(--warning); }
+  .pill-more { background: var(--surface2); color: var(--text3); }
+
+  /* ── Legend ── */
+  .legend {
+    display: flex; gap: 16px; flex-wrap: wrap;
+    font-size: 12px; color: var(--text2);
+    margin-top: 10px; padding: 0 2px;
+  }
+  .legend-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    display: inline-block; margin-right: 5px; vertical-align: middle;
+  }
+
+  /* ── File header ── */
+  .file-header {
+    display: flex; align-items: center; justify-content: space-between;
+    flex-wrap: wrap; gap: 10px;
+    margin-bottom: 1.25rem;
+  }
+  .file-name {
+    font-size: 15px; font-weight: 600;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .file-badge {
+    font-size: 11px; font-weight: 500;
+    padding: 2px 8px; border-radius: var(--radius-sm);
+    background: var(--accent-light); color: var(--accent);
+  }
+
+  /* ── Empty state ── */
+  .empty {
+    text-align: center;
+    padding: 3rem 1rem;
+    color: var(--text3);
+    font-size: 13px;
+  }
+
+  /* ── Footer ── */
+  footer {
+    text-align: center;
+    padding: 2rem;
+    font-size: 12px;
+    color: var(--text3);
+    border-top: 1px solid var(--border);
+    margin-top: 3rem;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-dot"></div>
+    MATHEC Registry
+    <span class="logo-sub">/ Missing Data Report</span>
+  </div>
+  <span id="timestamp"></span>
+</header>
+
+<main>
+
+  <!-- Upload section -->
+  <div id="upload-section">
+    <div id="xlsx-error" style="display:none; background:#fcebeb; color:#A32D2D; border:1px solid #f7c1c1; border-radius:10px; padding:1rem 1.25rem; max-width:540px; margin:2rem auto; font-size:13px;">
+      ⚠️ The file reader library could not load (network may be restricted). Try opening this page on a different network or browser.
+    </div>
+    <div class="upload-card">
+      <div class="upload-icon">
+        <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+      </div>
+      <div class="upload-title">Upload your registry file</div>
+      <div class="upload-sub">Excel (.xlsx, .xls) or CSV — the report is generated instantly in your browser. Your data never leaves your computer.</div>
+
+      <div class="drop-zone" id="drop-zone" onclick="document.getElementById('file-input').click()">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="margin: 0 auto; display:block;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        <p>Drop file here or <span>browse</span></p>
+        <input type="file" id="file-input" accept=".xlsx,.xls,.csv" style="display:none">
+      </div>
+
+      <div style="font-size:12px; color: var(--text3); margin-bottom: 8px;">Detected as missing:</div>
+      <div class="missing-tags">
+        <span class="tag">empty</span><span class="tag">NA</span><span class="tag">ND</span>
+        <span class="tag">NF</span><span class="tag">99</span><span class="tag">999</span>
+        <span class="tag">-</span><span class="tag">.</span><span class="tag">/</span>
+        <span class="tag">N/A</span><span class="tag">NR</span><span class="tag">manquant</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Dashboard -->
+  <div id="dashboard">
+    <div class="file-header">
+      <div class="file-name">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+        <span id="file-name-display">—</span>
+        <span class="file-badge" id="last-updated-badge">—</span>
+      </div>
+      <div style="display:flex; gap:8px;">
+        <button class="btn btn-accent" onclick="exportCSV()">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Export CSV
+        </button>
+        <button class="btn" onclick="resetApp()">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4.95"/></svg>
+          New file
+        </button>
+      </div>
+    </div>
+
+    <!-- Metrics -->
+    <div class="metrics-grid">
+      <div class="metric-card">
+        <div class="metric-label">Patients</div>
+        <div class="metric-value" id="m-patients">—</div>
+        <div class="metric-sub">rows loaded</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">Variables</div>
+        <div class="metric-value" id="m-vars">—</div>
+        <div class="metric-sub">columns analysed</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">Missing cells</div>
+        <div class="metric-value" id="m-missing">—</div>
+        <div class="metric-sub" id="m-missing-sub">of total</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">Completeness</div>
+        <div class="metric-value" id="m-complete" style="color: var(--success)">—</div>
+        <div class="metric-sub">overall</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">Critical patients</div>
+        <div class="metric-value" id="m-critical" style="color: var(--danger)">—</div>
+        <div class="metric-sub">&gt;50% missing</div>
+      </div>
+    </div>
+
+    <!-- Toolbar -->
+    <div class="toolbar">
+      <div class="tabs">
+        <button class="tab-btn active" onclick="switchTab('patients', this)">By patient</button>
+        <button class="tab-btn" onclick="switchTab('variables', this)">By variable</button>
+      </div>
+      <div class="toolbar-sep"></div>
+      <select id="filter-pathology" onchange="renderTable()">
+        <option value="">All pathologies</option>
+      </select>
+      <select id="filter-severity" onchange="renderTable()">
+        <option value="">All severity</option>
+        <option value="critical">Critical (&gt;50%)</option>
+        <option value="warning">Warning (20–50%)</option>
+        <option value="ok">Complete (&lt;20%)</option>
+      </select>
+      <input type="text" id="search-input" placeholder="Search…" oninput="renderTable()" style="width: 130px;">
+    </div>
+
+    <!-- Table -->
+    <div class="table-wrap">
+      <div id="table-container"></div>
+    </div>
+
+    <!-- Legend -->
+    <div class="legend">
+      <span><span class="legend-dot" style="background: var(--danger)"></span>Critical — &gt;50% missing</span>
+      <span><span class="legend-dot" style="background: var(--warning)"></span>Warning — 20–50% missing</span>
+      <span><span class="legend-dot" style="background: var(--success)"></span>Complete — &lt;20% missing</span>
+    </div>
+  </div>
+
+</main>
+
+<footer>
+  MATHEC · Hôpital Saint-Louis · AP-HP &nbsp;·&nbsp; Data processed locally in your browser — nothing is uploaded.
+</footer>
+
+<script>
+const MISSING_VALUES = new Set(['', 'na', 'nd', 'nf', '99', '999', '-', '.', '/', 'n/a', 'manquant', 'manquante', 'nr', 'non renseigné', 'non renseignee', 'non renseignée']);
+
+function isMissing(v) {
+  if (v === null || v === undefined) return true;
+  return MISSING_VALUES.has(String(v).trim().toLowerCase());
+}
+
+let allData = [], headers = [], currentTab = 'patients';
+let sortCol = null, sortDir = 1;
+
+function resetApp() {
+  allData = []; headers = []; sortCol = null;
+  document.getElementById('upload-section').style.display = '';
+  document.getElementById('dashboard').style.display = 'none';
+  document.getElementById('file-input').value = '';
+}
+
+function switchTab(tab, btn) {
+  currentTab = tab;
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  sortCol = null; sortDir = 1;
+  renderTable();
+}
+
+function severity(pct) {
+  return pct > 50 ? 'critical' : pct > 20 ? 'warning' : 'ok';
+}
+function severityClass(pct) {
+  return pct > 50 ? 'danger' : pct > 20 ? 'warning' : 'success';
+}
+function barColor(pct) {
+  return pct > 50 ? '#A32D2D' : pct > 20 ? '#854F0B' : '#3B6D11';
+}
+
+function getPathoKey() {
+  return ['pathologie','pathology','PATHOLOGIE','Pathologie','PATHO','Patho','patho'].find(k => headers.includes(k));
+}
+function getIdKey() {
+  return ['patient_id','Patient_ID','ID','id','PatientID','patient','Patient','N°','numero','num'].find(k => headers.includes(k)) || headers[0];
+}
+
+function buildPatientRows() {
+  const pathoKey = getPathoKey();
+  const idKey = getIdKey();
+  return allData.map((row, idx) => {
+    const id = String(row[idKey] ?? idx + 1);
+    const patho = pathoKey ? String(row[pathoKey] ?? '').trim() : '';
+    const missingCols = headers.filter(h => isMissing(row[h]));
+    const pct = Math.round((missingCols.length / headers.length) * 100);
+    return { id, patho, missingCount: missingCols.length, pct, missingCols, total: headers.length };
+  });
+}
+
+function buildVarRows() {
+  const pathoFilter = document.getElementById('filter-pathology').value.toLowerCase();
+  const pathoKey = getPathoKey();
+  return headers.map(h => {
+    let rows = allData;
+    if (pathoFilter && pathoKey) rows = allData.filter(r => String(r[pathoKey] ?? '').toLowerCase() === pathoFilter);
+    const missing = rows.filter(r => isMissing(r[h])).length;
+    const pct = rows.length > 0 ? Math.round((missing / rows.length) * 100) : 0;
+    return { h, missing, total: rows.length, pct };
+  });
+}
+
+function renderTable() {
+  const pathoFilter = document.getElementById('filter-pathology').value.toLowerCase();
+  const sevFilter = document.getElementById('filter-severity').value;
+  const search = document.getElementById('search-input').value.toLowerCase();
+  const pathoKey = getPathoKey();
+  let html = '';
+
+  if (currentTab === 'patients') {
+    let rows = buildPatientRows();
+    if (pathoFilter && pathoKey) rows = rows.filter(r => r.patho.toLowerCase() === pathoFilter);
+    if (sevFilter) rows = rows.filter(r => severity(r.pct) === sevFilter);
+    if (search) rows = rows.filter(r => r.id.toLowerCase().includes(search) || r.patho.toLowerCase().includes(search));
+
+    if (sortCol === 'id') rows.sort((a,b) => sortDir * a.id.localeCompare(b.id));
+    else if (sortCol === 'patho') rows.sort((a,b) => sortDir * a.patho.localeCompare(b.patho));
+    else if (sortCol === 'pct') rows.sort((a,b) => sortDir * (a.pct - b.pct));
+    else rows.sort((a,b) => b.pct - a.pct);
+
+    const arrow = (col) => {
+      if (sortCol !== col) return '<span class="sort-arrow">↕</span>';
+      return `<span class="sort-arrow">${sortDir === 1 ? '↑' : '↓'}</span>`;
+    };
+    const thClass = (col) => sortCol === col ? 'sorted' : '';
+
+    html += `<table><thead><tr>
+      <th class="${thClass('id')}" onclick="doSort('id')">Patient ID ${arrow('id')}</th>
+      <th class="${thClass('patho')}" onclick="doSort('patho')">Pathology ${arrow('patho')}</th>
+      <th>Missing</th>
+      <th class="${thClass('pct')}" onclick="doSort('pct')">% ${arrow('pct')}</th>
+      <th>Completeness</th>
+      <th>Missing variables</th>
+    </tr></thead><tbody>`;
+
+    if (rows.length === 0) {
+      html += `<tr><td colspan="6"><div class="empty">No patients match the selected filters.</div></td></tr>`;
+    }
+    rows.forEach(r => {
+      const cls = severityClass(r.pct);
+      const fillW = Math.max(2, 100 - r.pct);
+      const pills = r.missingCols.slice(0, 4).map(c =>
+        `<span class="pill pill-${cls}" title="${c}">${c}</span>`
+      ).join('');
+      const more = r.missingCols.length > 4
+        ? `<span class="pill pill-more">+${r.missingCols.length - 4}</span>` : '';
+      html += `<tr>
+        <td class="patient-id">${r.id}</td>
+        <td style="color:var(--text2)">${r.patho || '—'}</td>
+        <td><span class="badge badge-${cls}">${r.missingCount}/${r.total}</span></td>
+        <td style="font-weight:600">${r.pct}%</td>
+        <td>
+          <div class="bar-bg"><div class="bar-fill" style="width:${fillW}%;background:${barColor(r.pct)}"></div></div>
+        </td>
+        <td>${pills}${more}</td>
+      </tr>`;
+    });
+    html += '</tbody></table>';
+
+  } else {
+    let rows = buildVarRows();
+    if (sevFilter) rows = rows.filter(r => severity(r.pct) === sevFilter);
+    if (search) rows = rows.filter(r => r.h.toLowerCase().includes(search));
+
+    if (sortCol === 'h') rows.sort((a,b) => sortDir * a.h.localeCompare(b.h));
+    else if (sortCol === 'pct') rows.sort((a,b) => sortDir * (a.pct - b.pct));
+    else rows.sort((a,b) => b.pct - a.pct);
+
+    const arrow = (col) => {
+      if (sortCol !== col) return '<span class="sort-arrow">↕</span>';
+      return `<span class="sort-arrow">${sortDir === 1 ? '↑' : '↓'}</span>`;
+    };
+    const thClass = (col) => sortCol === col ? 'sorted' : '';
+
+    html += `<table><thead><tr>
+      <th class="${thClass('h')}" onclick="doSort('h')">Variable ${arrow('h')}</th>
+      <th>Missing</th>
+      <th class="${thClass('pct')}" onclick="doSort('pct')">% ${arrow('pct')}</th>
+      <th>Completeness</th>
+    </tr></thead><tbody>`;
+
+    if (rows.length === 0) {
+      html += `<tr><td colspan="4"><div class="empty">No variables match the selected filters.</div></td></tr>`;
+    }
+    rows.forEach(r => {
+      const cls = severityClass(r.pct);
+      const fillW = Math.max(2, 100 - r.pct);
+      html += `<tr>
+        <td style="font-weight:500">${r.h}</td>
+        <td><span class="badge badge-${cls}">${r.missing}/${r.total}</span></td>
+        <td style="font-weight:600">${r.pct}%</td>
+        <td>
+          <div class="bar-bg"><div class="bar-fill" style="width:${fillW}%;background:${barColor(r.pct)}"></div></div>
+        </td>
+      </tr>`;
+    });
+    html += '</tbody></table>';
+  }
+
+  document.getElementById('table-container').innerHTML = html;
+}
+
+function doSort(col) {
+  if (sortCol === col) sortDir *= -1;
+  else { sortCol = col; sortDir = 1; }
+  renderTable();
+}
+
+function exportCSV() {
+  let rows, header, fileName;
+  const pathoFilter = document.getElementById('filter-pathology').value.toLowerCase();
+  const sevFilter = document.getElementById('filter-severity').value;
+  const search = document.getElementById('search-input').value.toLowerCase();
+  const pathoKey = getPathoKey();
+
+  if (currentTab === 'patients') {
+    let data = buildPatientRows();
+    if (pathoFilter && pathoKey) data = data.filter(r => r.patho.toLowerCase() === pathoFilter);
+    if (sevFilter) data = data.filter(r => severity(r.pct) === sevFilter);
+    if (search) data = data.filter(r => r.id.toLowerCase().includes(search) || r.patho.toLowerCase().includes(search));
+    data.sort((a,b) => b.pct - a.pct);
+    header = 'Patient ID,Pathology,Missing count,Total columns,Missing %,Severity,Missing variables\n';
+    rows = data.map(r => `"${r.id}","${r.patho}",${r.missingCount},${r.total},${r.pct}%,${severity(r.pct)},"${r.missingCols.join('; ')}"`).join('\n');
+    fileName = 'missing_data_by_patient.csv';
+  } else {
+    let data = buildVarRows();
+    if (sevFilter) data = data.filter(r => severity(r.pct) === sevFilter);
+    if (search) data = data.filter(r => r.h.toLowerCase().includes(search));
+    data.sort((a,b) => b.pct - a.pct);
+    header = 'Variable,Missing count,Total patients,Missing %,Severity\n';
+    rows = data.map(r => `"${r.h}",${r.missing},${r.total},${r.pct}%,${severity(r.pct)}`).join('\n');
+    fileName = 'missing_data_by_variable.csv';
+  }
+
+  const blob = new Blob(['\ufeff' + header + rows], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href = url; a.download = fileName; a.click();
+  URL.revokeObjectURL(url);
+}
+
+function processData(data, fileName) {
+  if (data.length < 2) { alert('File appears empty or has only one row.'); return; }
+  headers = data[0].map(h => String(h ?? '').trim()).filter(Boolean);
+  allData = data.slice(1)
+    .map(row => {
+      const obj = {};
+      headers.forEach((h, i) => { obj[h] = row[i] !== undefined ? row[i] : ''; });
+      return obj;
+    })
+    .filter(row => headers.some(h => !isMissing(row[h])));
+
+  if (allData.length === 0) { alert('No valid patient rows found.'); return; }
+
+  const totalCells = allData.length * headers.length;
+  const missingCells = allData.reduce((acc, row) => acc + headers.filter(h => isMissing(row[h])).length, 0);
+  const completePct = Math.round(((totalCells - missingCells) / totalCells) * 100);
+  const criticalCount = allData.filter(row => {
+    const mc = headers.filter(h => isMissing(row[h])).length;
+    return (mc / headers.length) * 100 > 50;
+  }).length;
+
+  document.getElementById('m-patients').textContent = allData.length.toLocaleString();
+  document.getElementById('m-vars').textContent = headers.length.toLocaleString();
+  document.getElementById('m-missing').textContent = missingCells.toLocaleString();
+  document.getElementById('m-missing-sub').textContent = `of ${totalCells.toLocaleString()} total`;
+  document.getElementById('m-complete').textContent = completePct + '%';
+  document.getElementById('m-complete').style.color = completePct >= 80 ? 'var(--success)' : completePct >= 50 ? 'var(--warning)' : 'var(--danger)';
+  document.getElementById('m-critical').textContent = criticalCount.toLocaleString();
+  document.getElementById('file-name-display').textContent = fileName;
+
+  const now = new Date();
+  document.getElementById('last-updated-badge').textContent = 'Updated ' + now.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
+  document.getElementById('timestamp').textContent = now.toLocaleDateString('fr-FR', {day:'2-digit',month:'short',year:'numeric'}) + ' · ' + now.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
+
+  const pathoKey = getPathoKey();
+  const pathoSelect = document.getElementById('filter-pathology');
+  pathoSelect.innerHTML = '<option value="">All pathologies</option>';
+  if (pathoKey) {
+    const pathos = [...new Set(allData.map(r => String(r[pathoKey] ?? '').trim()).filter(Boolean))].sort();
+    pathos.forEach(p => {
+      const o = document.createElement('option'); o.value = p.toLowerCase(); o.textContent = p; pathoSelect.appendChild(o);
+    });
+  }
+
+  document.getElementById('upload-section').style.display = 'none';
+  document.getElementById('dashboard').style.display = '';
+  renderTable();
+}
+
+function handleFile(file) {
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const wb = XLSX.read(e.target.result, { type: 'array' });
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const data = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
+      processData(data, file.name);
+    } catch (err) { alert('Could not read file: ' + err.message); }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+document.getElementById('file-input').addEventListener('change', e => {
+  if (e.target.files[0]) handleFile(e.target.files[0]);
+});
+
+const dz = document.getElementById('drop-zone');
+dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('drag-over'); });
+dz.addEventListener('dragleave', () => dz.classList.remove('drag-over'));
+dz.addEventListener('drop', e => {
+  e.preventDefault(); dz.classList.remove('drag-over');
+  if (e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]);
+});
+
+document.getElementById('timestamp').textContent = new Date().toLocaleDateString('fr-FR', {day:'2-digit',month:'short',year:'numeric'});
+</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js" onerror="document.getElementById('xlsx-error').style.display='block'"></script>
+</body>
+</html>
