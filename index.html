@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MATHEC — Missing Data Report</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: Arial, sans-serif; background: #f5f5f5; color: #222; font-size: 14px; }
+header { background: #fff; border-bottom: 1px solid #ddd; padding: 0 24px; height: 52px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 10; }
+.logo { font-weight: bold; font-size: 15px; display: flex; align-items: center; gap: 8px; }
+.dot { width: 8px; height: 8px; border-radius: 50%; background: #185FA5; display: inline-block; }
+main { max-width: 1100px; margin: 0 auto; padding: 24px 16px; }
+
+/* Upload */
+#upload-section { display: block; }
+#dashboard { display: none; }
+.upload-box { background: #fff; border: 1px solid #ddd; border-radius: 10px; padding: 48px 24px; text-align: center; max-width: 500px; margin: 48px auto; }
+.upload-box h2 { font-size: 18px; margin-bottom: 8px; }
+.upload-box p { color: #666; font-size: 13px; margin-bottom: 20px; }
+.drop-zone { border: 2px dashed #aaa; border-radius: 8px; padding: 28px 16px; cursor: pointer; margin-bottom: 16px; transition: border-color 0.2s, background 0.2s; }
+.drop-zone:hover, .drop-zone.over { border-color: #185FA5; background: #eef4fb; }
+.drop-zone .icon { font-size: 36px; margin-bottom: 8px; }
+.drop-zone .label { font-size: 14px; color: #444; }
+.drop-zone .label span { color: #185FA5; font-weight: bold; cursor: pointer; }
+.tags { display: flex; flex-wrap: wrap; gap: 5px; justify-content: center; margin-top: 12px; }
+.tag { font-family: monospace; font-size: 11px; background: #eee; border: 1px solid #ccc; border-radius: 4px; padding: 2px 6px; color: #555; }
+.error-box { background: #fff0f0; border: 1px solid #f5c5c5; border-radius: 8px; padding: 12px 16px; color: #a00; font-size: 13px; margin-bottom: 16px; display: none; }
+
+/* Metrics */
+.metrics { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 20px; }
+.metric { background: #fff; border: 1px solid #ddd; border-radius: 8px; padding: 14px 18px; flex: 1; min-width: 140px; }
+.metric-label { font-size: 11px; color: #888; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px; }
+.metric-value { font-size: 26px; font-weight: bold; }
+
+/* Toolbar */
+.toolbar { background: #fff; border: 1px solid #ddd; border-radius: 8px; padding: 10px 14px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 12px; }
+.tab-group { display: flex; background: #f0f0f0; border-radius: 6px; padding: 3px; gap: 2px; }
+.tab { padding: 5px 14px; border-radius: 5px; font-size: 13px; font-weight: 500; border: none; background: transparent; color: #666; cursor: pointer; }
+.tab.active { background: #fff; color: #222; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+.spacer { flex: 1; }
+select, input[type=text] { font-size: 13px; padding: 5px 10px; border: 1px solid #ccc; border-radius: 6px; background: #fff; color: #222; }
+.btn { font-size: 13px; font-weight: 500; padding: 6px 14px; border-radius: 6px; border: 1px solid #ccc; background: #fff; color: #444; cursor: pointer; }
+.btn:hover { background: #f5f5f5; }
+.btn-blue { background: #185FA5; color: #fff; border-color: #185FA5; }
+.btn-blue:hover { background: #124d8a; }
+
+/* File header */
+.file-header { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; margin-bottom: 16px; }
+.file-name { font-size: 15px; font-weight: bold; }
+.file-updated { font-size: 12px; color: #888; margin-left: 8px; }
+
+/* Table */
+.table-wrap { background: #fff; border: 1px solid #ddd; border-radius: 8px; overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; min-width: 600px; }
+thead th { background: #f5f5f5; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: #666; padding: 10px 14px; border-bottom: 1px solid #ddd; text-align: left; cursor: pointer; white-space: nowrap; user-select: none; }
+thead th:hover { color: #222; }
+tbody tr { border-bottom: 1px solid #eee; }
+tbody tr:last-child { border-bottom: none; }
+tbody tr:hover { background: #fafafa; }
+td { padding: 9px 14px; vertical-align: middle; }
+
+/* Badges */
+.badge { display: inline-block; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 99px; }
+.red { background: #fde8e8; color: #a00; }
+.orange { background: #fef3e2; color: #7a4200; }
+.green { background: #e8f5e9; color: #2e6b2e; }
+
+/* Bar */
+.bar-bg { display: inline-block; width: 80px; height: 6px; background: #e0e0e0; border-radius: 99px; vertical-align: middle; overflow: hidden; }
+.bar-fill { height: 6px; border-radius: 99px; }
+
+/* Pills */
+.pill { display: inline-block; font-size: 11px; padding: 1px 7px; border-radius: 4px; margin: 1px; max-width: 110px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; vertical-align: middle; }
+.pill.red { background: #fde8e8; color: #a00; }
+.pill.orange { background: #fef3e2; color: #7a4200; }
+.pill.gray { background: #eee; color: #666; }
+
+/* Empty */
+.empty { text-align: center; padding: 40px; color: #aaa; font-size: 13px; }
+
+/* Legend */
+.legend { display: flex; gap: 16px; flex-wrap: wrap; font-size: 12px; color: #666; margin-top: 10px; }
+.legend-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 4px; vertical-align: middle; }
+
+footer { text-align: center; padding: 24px; font-size: 12px; color: #aaa; border-top: 1px solid #eee; margin-top: 40px; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo"><span class="dot"></span> MATHEC Registry &nbsp;<span style="color:#aaa;font-weight:normal">/ Missing Data Report</span></div>
+  <span id="ts" style="font-size:12px;color:#aaa;"></span>
+</header>
+
+<main>
+
+<div id="upload-section">
+  <div id="err" class="error-box"></div>
+  <div class="upload-box">
+    <h2>Upload your registry file</h2>
+    <p>Excel (.xlsx, .xls) or CSV — report generated instantly.<br>Your data never leaves your computer.</p>
+    <div class="drop-zone" id="dz" onclick="document.getElementById('fi').click()">
+      <div class="icon">📂</div>
+      <div class="label">Drop file here or <span>browse</span></div>
+      <input type="file" id="fi" accept=".xlsx,.xls,.csv" style="display:none">
+    </div>
+    <div style="font-size:12px;color:#999;margin-bottom:8px;">Detected as missing:</div>
+    <div class="tags">
+      <span class="tag">empty</span><span class="tag">NA</span><span class="tag">ND</span>
+      <span class="tag">NF</span><span class="tag">99</span><span class="tag">999</span>
+      <span class="tag">-</span><span class="tag">.</span><span class="tag">/</span>
+      <span class="tag">N/A</span><span class="tag">NR</span><span class="tag">manquant</span>
+    </div>
+  </div>
+</div>
+
+<div id="dashboard">
+  <div class="file-header">
+    <div><span class="file-name" id="fname"></span><span class="file-updated" id="fupdated"></span></div>
+    <div style="display:flex;gap:8px;">
+      <button class="btn btn-blue" onclick="exportCSV()">⬇ Export CSV</button>
+      <button class="btn" onclick="reset()">↺ New file</button>
+    </div>
+  </div>
+
+  <div class="metrics">
+    <div class="metric"><div class="metric-label">Patients</div><div class="metric-value" id="mp">—</div></div>
+    <div class="metric"><div class="metric-label">Variables</div><div class="metric-value" id="mv">—</div></div>
+    <div class="metric"><div class="metric-label">Missing cells</div><div class="metric-value" id="mm">—</div></div>
+    <div class="metric"><div class="metric-label">Completeness</div><div class="metric-value" id="mc" style="color:#2e6b2e">—</div></div>
+    <div class="metric"><div class="metric-label">Critical patients</div><div class="metric-value" id="mcrit" style="color:#a00">—</div></div>
+  </div>
+
+  <div class="toolbar">
+    <div class="tab-group">
+      <button class="tab active" id="tab-p" onclick="switchTab('patients')">By patient</button>
+      <button class="tab" id="tab-v" onclick="switchTab('variables')">By variable</button>
+    </div>
+    <div class="spacer"></div>
+    <select id="fp" onchange="render()"><option value="">All pathologies</option></select>
+    <select id="fs" onchange="render()">
+      <option value="">All severity</option>
+      <option value="critical">Critical (&gt;50%)</option>
+      <option value="warning">Warning (20–50%)</option>
+      <option value="ok">Complete (&lt;20%)</option>
+    </select>
+    <input type="text" id="fq" placeholder="Search…" oninput="render()" style="width:120px;">
+  </div>
+
+  <div class="table-wrap"><div id="tc"></div></div>
+
+  <div class="legend" style="margin-top:10px;">
+    <span><span class="legend-dot" style="background:#a00"></span>Critical — &gt;50% missing</span>
+    <span><span class="legend-dot" style="background:#7a4200"></span>Warning — 20–50% missing</span>
+    <span><span class="legend-dot" style="background:#2e6b2e"></span>Complete — &lt;20% missing</span>
+  </div>
+</div>
+
+</main>
+
+<footer>MATHEC · Hôpital Saint-Louis · AP-HP &nbsp;·&nbsp; Data processed locally — nothing is uploaded.</footer>
+
+<script>
+var MISSING = ['','na','nd','nf','99','999','-','.','/','n/a','manquant','manquante','nr','non renseigné','non renseignee','non renseignée'];
+var allData=[], headers=[], curTab='patients', sortCol=null, sortDir=1;
+
+function isMissing(v){
+  if(v===null||v===undefined) return true;
+  return MISSING.indexOf(String(v).trim().toLowerCase())>=0;
+}
+function sev(p){ return p>50?'critical':p>20?'warning':'ok'; }
+function cls(p){ return p>50?'red':p>20?'orange':'green'; }
+function barC(p){ return p>50?'#c0392b':p>20?'#e67e22':'#27ae60'; }
+
+function reset(){
+  allData=[]; headers=[]; sortCol=null;
+  document.getElementById('upload-section').style.display='';
+  document.getElementById('dashboard').style.display='none';
+  document.getElementById('fi').value='';
+}
+
+function switchTab(t){
+  curTab=t; sortCol=null; sortDir=1;
+  document.getElementById('tab-p').className='tab'+(t==='patients'?' active':'');
+  document.getElementById('tab-v').className='tab'+(t==='variables'?' active':'');
+  render();
+}
+
+function pathoKey(){ return ['pathologie','pathology','PATHOLOGIE','Pathologie','PATHO','patho'].find(function(k){return headers.indexOf(k)>=0;}); }
+function idKey(){ return ['patient_id','Patient_ID','ID','id','PatientID','patient','Patient','N°','numero'].find(function(k){return headers.indexOf(k)>=0;})||headers[0]; }
+
+function buildPatients(){
+  var pk=pathoKey(), ik=idKey();
+  return allData.map(function(row,i){
+    var id=String(row[ik]!==undefined?row[ik]:i+1);
+    var patho=pk?String(row[pk]||'').trim():'';
+    var mc=headers.filter(function(h){return isMissing(row[h]);});
+    var pct=Math.round(mc.length/headers.length*100);
+    return {id:id,patho:patho,missingCount:mc.length,pct:pct,missingCols:mc,total:headers.length};
+  });
+}
+
+function buildVars(){
+  var pk=pathoKey();
+  var pf=document.getElementById('fp').value.toLowerCase();
+  return headers.map(function(h){
+    var rows=allData;
+    if(pf&&pk) rows=allData.filter(function(r){return String(r[pk]||'').toLowerCase()===pf;});
+    var m=rows.filter(function(r){return isMissing(r[h]);}).length;
+    var pct=rows.length>0?Math.round(m/rows.length*100):0;
+    return {h:h,missing:m,total:rows.length,pct:pct};
+  });
+}
+
+function render(){
+  var pf=document.getElementById('fp').value.toLowerCase();
+  var sf=document.getElementById('fs').value;
+  var q=document.getElementById('fq').value.toLowerCase();
+  var pk=pathoKey();
+  var html='';
+
+  if(curTab==='patients'){
+    var rows=buildPatients();
+    if(pf&&pk) rows=rows.filter(function(r){return r.patho.toLowerCase()===pf;});
+    if(sf) rows=rows.filter(function(r){return sev(r.pct)===sf;});
+    if(q) rows=rows.filter(function(r){return r.id.toLowerCase().indexOf(q)>=0||r.patho.toLowerCase().indexOf(q)>=0;});
+    if(sortCol==='id') rows.sort(function(a,b){return sortDir*a.id.localeCompare(b.id);});
+    else if(sortCol==='patho') rows.sort(function(a,b){return sortDir*a.patho.localeCompare(b.patho);});
+    else if(sortCol==='pct') rows.sort(function(a,b){return sortDir*(a.pct-b.pct);});
+    else rows.sort(function(a,b){return b.pct-a.pct;});
+
+    html='<table><thead><tr>';
+    html+='<th onclick="doSort(\'id\')">Patient ID '+(sortCol==='id'?(sortDir===1?'↑':'↓'):'↕')+'</th>';
+    html+='<th onclick="doSort(\'patho\')">Pathology '+(sortCol==='patho'?(sortDir===1?'↑':'↓'):'↕')+'</th>';
+    html+='<th>Missing</th>';
+    html+='<th onclick="doSort(\'pct\')">% '+(sortCol==='pct'?(sortDir===1?'↑':'↓'):'↕')+'</th>';
+    html+='<th>Completeness</th><th>Missing variables</th></tr></thead><tbody>';
+
+    if(!rows.length) html+='<tr><td colspan="6"><div class="empty">No patients match the filters.</div></td></tr>';
+    rows.forEach(function(r){
+      var c=cls(r.pct), fw=Math.max(2,100-r.pct);
+      var pills=r.missingCols.slice(0,4).map(function(x){return '<span class="pill '+c+'" title="'+x+'">'+x+'</span>';}).join('');
+      var more=r.missingCols.length>4?'<span class="pill gray">+' +(r.missingCols.length-4)+'</span>':'';
+      html+='<tr><td style="font-weight:bold">'+r.id+'</td><td style="color:#666">'+( r.patho||'—')+'</td>';
+      html+='<td><span class="badge '+c+'">'+r.missingCount+'/'+r.total+'</span></td>';
+      html+='<td style="font-weight:bold">'+r.pct+'%</td>';
+      html+='<td><div class="bar-bg"><div class="bar-fill" style="width:'+fw+'%;background:'+barC(r.pct)+'"></div></div></td>';
+      html+='<td>'+pills+more+'</td></tr>';
+    });
+    html+='</tbody></table>';
+
+  } else {
+    var rows=buildVars();
+    if(sf) rows=rows.filter(function(r){return sev(r.pct)===sf;});
+    if(q) rows=rows.filter(function(r){return r.h.toLowerCase().indexOf(q)>=0;});
+    if(sortCol==='h') rows.sort(function(a,b){return sortDir*a.h.localeCompare(b.h);});
+    else if(sortCol==='pct') rows.sort(function(a,b){return sortDir*(a.pct-b.pct);});
+    else rows.sort(function(a,b){return b.pct-a.pct;});
+
+    html='<table><thead><tr>';
+    html+='<th onclick="doSort(\'h\')">Variable '+(sortCol==='h'?(sortDir===1?'↑':'↓'):'↕')+'</th>';
+    html+='<th>Missing</th>';
+    html+='<th onclick="doSort(\'pct\')">% '+(sortCol==='pct'?(sortDir===1?'↑':'↓'):'↕')+'</th>';
+    html+='<th>Completeness</th></tr></thead><tbody>';
+
+    if(!rows.length) html+='<tr><td colspan="4"><div class="empty">No variables match the filters.</div></td></tr>';
+    rows.forEach(function(r){
+      var c=cls(r.pct), fw=Math.max(2,100-r.pct);
+      html+='<tr><td style="font-weight:500">'+r.h+'</td>';
+      html+='<td><span class="badge '+c+'">'+r.missing+'/'+r.total+'</span></td>';
+      html+='<td style="font-weight:bold">'+r.pct+'%</td>';
+      html+='<td><div class="bar-bg"><div class="bar-fill" style="width:'+fw+'%;background:'+barC(r.pct)+'"></div></div></td></tr>';
+    });
+    html+='</tbody></table>';
+  }
+  document.getElementById('tc').innerHTML=html;
+}
+
+function doSort(col){
+  if(sortCol===col) sortDir*=-1; else{sortCol=col;sortDir=1;}
+  render();
+}
+
+function exportCSV(){
+  var rows, hdr, fn;
+  var sf=document.getElementById('fs').value;
+  var q=document.getElementById('fq').value.toLowerCase();
+  var pf=document.getElementById('fp').value.toLowerCase();
+  var pk=pathoKey();
+  if(curTab==='patients'){
+    var data=buildPatients();
+    if(pf&&pk) data=data.filter(function(r){return r.patho.toLowerCase()===pf;});
+    if(sf) data=data.filter(function(r){return sev(r.pct)===sf;});
+    if(q) data=data.filter(function(r){return r.id.toLowerCase().indexOf(q)>=0||r.patho.toLowerCase().indexOf(q)>=0;});
+    data.sort(function(a,b){return b.pct-a.pct;});
+    hdr='Patient ID,Pathology,Missing count,Total,Missing %,Severity,Missing variables\n';
+    rows=data.map(function(r){return '"'+r.id+'","'+r.patho+'",'+r.missingCount+','+r.total+','+r.pct+'%,'+sev(r.pct)+',"'+r.missingCols.join('; ')+'"';}).join('\n');
+    fn='missing_by_patient.csv';
+  } else {
+    var data=buildVars();
+    if(sf) data=data.filter(function(r){return sev(r.pct)===sf;});
+    if(q) data=data.filter(function(r){return r.h.toLowerCase().indexOf(q)>=0;});
+    data.sort(function(a,b){return b.pct-a.pct;});
+    hdr='Variable,Missing,Total,Missing %,Severity\n';
+    rows=data.map(function(r){return '"'+r.h+'",'+r.missing+','+r.total+','+r.pct+'%,'+sev(r.pct);}).join('\n');
+    fn='missing_by_variable.csv';
+  }
+  var blob=new Blob(['\ufeff'+hdr+rows],{type:'text/csv;charset=utf-8;'});
+  var url=URL.createObjectURL(blob);
+  var a=document.createElement('a'); a.href=url; a.download=fn; a.click();
+  URL.revokeObjectURL(url);
+}
+
+function processData(data, fileName){
+  if(data.length<2){alert('File appears empty.'); return;}
+  headers=data[0].map(function(h){return String(h||'').trim();}).filter(Boolean);
+  allData=data.slice(1).map(function(row){
+    var obj={};
+    headers.forEach(function(h,i){obj[h]=row[i]!==undefined?row[i]:'';});
+    return obj;
+  }).filter(function(row){return headers.some(function(h){return !isMissing(row[h]);});});
+
+  if(!allData.length){alert('No valid rows found.'); return;}
+
+  var total=allData.length*headers.length;
+  var missing=allData.reduce(function(acc,row){return acc+headers.filter(function(h){return isMissing(row[h]);}).length;},0);
+  var pct=Math.round((total-missing)/total*100);
+  var crit=allData.filter(function(row){return headers.filter(function(h){return isMissing(row[h]);}).length/headers.length>0.5;}).length;
+
+  document.getElementById('mp').textContent=allData.length;
+  document.getElementById('mv').textContent=headers.length;
+  document.getElementById('mm').textContent=missing.toLocaleString();
+  document.getElementById('mc').textContent=pct+'%';
+  document.getElementById('mc').style.color=pct>=80?'#2e6b2e':pct>=50?'#7a4200':'#a00';
+  document.getElementById('mcrit').textContent=crit;
+  document.getElementById('fname').textContent=fileName;
+  document.getElementById('fupdated').textContent=' · Updated '+new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
+  document.getElementById('ts').textContent=new Date().toLocaleDateString('fr-FR',{day:'2-digit',month:'short',year:'numeric'});
+
+  var pk=pathoKey();
+  var sel=document.getElementById('fp');
+  sel.innerHTML='<option value="">All pathologies</option>';
+  if(pk){
+    var pathos=[...new Set(allData.map(function(r){return String(r[pk]||'').trim();}).filter(Boolean))].sort();
+    pathos.forEach(function(p){var o=document.createElement('option');o.value=p.toLowerCase();o.textContent=p;sel.appendChild(o);});
+  }
+
+  document.getElementById('upload-section').style.display='none';
+  document.getElementById('dashboard').style.display='';
+  render();
+}
+
+function handleFile(file){
+  if(!window.XLSX){
+    document.getElementById('err').textContent='Error: file reader library not loaded. Check your internet connection and reload the page.';
+    document.getElementById('err').style.display='block';
+    return;
+  }
+  var reader=new FileReader();
+  reader.onload=function(e){
+    try{
+      var wb=XLSX.read(e.target.result,{type:'array'});
+      var ws=wb.Sheets[wb.SheetNames[0]];
+      var data=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
+      processData(data,file.name);
+    }catch(err){alert('Could not read file: '+err.message);}
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+document.getElementById('fi').addEventListener('change',function(e){if(e.target.files[0]) handleFile(e.target.files[0]);});
+var dz=document.getElementById('dz');
+dz.addEventListener('dragover',function(e){e.preventDefault();dz.classList.add('over');});
+dz.addEventListener('dragleave',function(){dz.classList.remove('over');});
+dz.addEventListener('drop',function(e){e.preventDefault();dz.classList.remove('over');if(e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]);});
+document.getElementById('ts').textContent=new Date().toLocaleDateString('fr-FR',{day:'2-digit',month:'short',year:'numeric'});
+</script>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+</body>
+</html>
